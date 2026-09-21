@@ -229,7 +229,7 @@ def rennen(max_runden):
     # Initial-Anzeige: volle Runden fuer beide Spuren
     zeige_rundenfortschritt(max_runden, max_runden)
 
-    while not (fertig[0] and fertig[1]):
+    while not (fertig[0] or fertig[1]):
         jetzt = timer.time()
 
         for spur in range(2):
@@ -276,16 +276,10 @@ def rennen(max_runden):
         # Kein wait() – so schnell wie moeglich pollen
 
     # Sieger bestimmen (wer zuerst fertig ist)
-    if fertig[0] and not fertig[1]:
+    if fertig[0]:
         sieger = 1
-    elif fertig[1] and not fertig[0]:
-        sieger = 2
     else:
-        # Beide fertig – schnellere Gesamtzeit gewinnt
-        if gesamt_zeit[0] <= gesamt_zeit[1]:
-            sieger = 1
-        else:
-            sieger = 2
+        sieger = 2
 
     print("WINNER:" + str(sieger))
 
