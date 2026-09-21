@@ -29,7 +29,7 @@ sensor_spur2 = ColorSensor(Port.B)
 
 # --- Konfiguration ---
 SCHWELLWERT = 30          # reflection() > SCHWELLWERT → Auto erkannt
-ENTPRELLZEIT_MS = 500     # Mindestzeit zwischen zwei Erkennungen pro Spur
+ENTPRELLZEIT_MS = 2000    # 2s Sperre nach Ampelstart und zwischen den Runden
 
 # Waehlbare Rundenzahlen (rechter Knopf iteriert durch)
 RUNDEN_OPTIONEN = [10, 20, 30, 40, 50]
@@ -37,7 +37,7 @@ RUNDEN_OPTIONEN = [10, 20, 30, 40, 50]
 # Beep-Frequenzen pro Spur bei Rundenzaehlung
 BEEP_SPUR1_HZ = 880   # A5 – hoeher
 BEEP_SPUR2_HZ = 587   # D5 – tiefer
-BEEP_DAUER_MS = 80
+BEEP_DAUER_MS = 15    # EXTREM KURZ (vorher 80), damit der Sensor nicht blockiert!
 
 
 # ---------------------------------------------------------------------------
@@ -214,12 +214,12 @@ def rennen(max_runden):
         max_runden: Anzahl der zu fahrenden Runden.
     """
     timer = StopWatch()
+    start_zeit = timer.time()
 
     # Zustand pro Spur
     runden       = [0, 0]          # Gezaelte Runden [Spur1, Spur2]
-    letzte_erk   = [0, 0]          # Zeitstempel letzte Erkennung
-    runden_start = [0, 0]          # Zeitstempel Rundenstart
-    gestartet    = [False, False]  # Ob die Spur die Startlinie ueberfahren hat
+    letzte_erk   = [start_zeit, start_zeit]  # 2s Sperre ab Ampelstart (ignoriert erste Ueberfahrt)
+    runden_start = [start_zeit, start_zeit]  # Startzeit = Ampel gruen
     fertig       = [False, False]  # Ob die Spur alle Runden beendet hat
     gesamt_zeit  = [0, 0]          # Gesamtzeit bei Finish
 
@@ -243,35 +243,30 @@ def rennen(max_runden):
             if sensor_erkennt_auto(sensoren[spur]):
                 letzte_erk[spur] = jetzt
 
-                if not gestartet[spur]:
-                    # Erste Erkennung: Auto ueberquert Startlinie
-                    gestartet[spur] = True
-                    runden_start[spur] = jetzt
-                else:
-                    # Weitere Erkennung: Runde abgeschlossen
-                    runden[spur] += 1
-                    rundenzeit = jetzt - runden_start[spur]
-                    runden_start[spur] = jetzt
+                # Erkennung: Runde abgeschlossen
+                runden[spur] += 1
+                rundenzeit = jetzt - runden_start[spur]
+                runden_start[spur] = jetzt
 
-                    spur_nr = spur + 1  # 1-basiert fuer Protokoll
-                    print("LAP:" + str(spur_nr) + ":" + str(runden[spur]) + ":" + str(rundenzeit))
+                spur_nr = spur + 1  # 1-basiert fuer Protokoll
+                print("LAP:" + str(spur_nr) + ":" + str(runden[spur]) + ":" + str(rundenzeit))
 
-                    # Kurzer Beep – unterschiedliche Tonhoehe pro Spur
-                    hub.speaker.beep(beep_hz[spur], BEEP_DAUER_MS)
+                # Kurzer Beep – unterschiedliche Tonhoehe pro Spur
+                hub.speaker.beep(beep_hz[spur], BEEP_DAUER_MS)
 
-                    # Rundenfortschritt auf Matrix aktualisieren
-                    rest1 = max_runden - runden[0]
-                    rest2 = max_runden - runden[1]
-                    zeige_rundenfortschritt(
-                        max(rest1, 0),
-                        max(rest2, 0)
-                    )
+                # Rundenfortschritt auf Matrix aktualisieren
+                rest1 = max_runden - runden[0]
+                rest2 = max_runden - runden[1]
+                zeige_rundenfortschritt(
+                    max(rest1, 0),
+                    max(rest2, 0)
+                )
 
-                    # Letzte Runde?
-                    if runden[spur] >= max_runden:
-                        fertig[spur] = True
-                        gesamt_zeit[spur] = jetzt
-                        print("FINISH:" + str(spur_nr) + ":" + str(jetzt))
+                # Letzte Runde?
+                if runden[spur] >= max_runden:
+                    fertig[spur] = True
+                    gesamt_zeit[spur] = jetzt
+                    print("FINISH:" + str(spur_nr) + ":" + str(jetzt))
 
         # Kein wait() – so schnell wie moeglich pollen
 
