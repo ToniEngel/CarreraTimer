@@ -197,6 +197,7 @@ ApplicationWindow {
         // F1 AMPEL
         // ═══════════════════════════════════════════
         Rectangle {
+            id: ampelBox
             Layout.fillWidth: true
             Layout.preferredHeight: 80
             radius: 12
@@ -265,6 +266,14 @@ ApplicationWindow {
                 function onRennLaeuftChanged() {
                     if (raceController.rennLaeuft) {
                         ampelAusAnimation.restart()
+                    }
+                }
+                function onAmpelStatusChanged() {
+                    // Beim ersten Aufleuchten der Ampel opacity zuruecksetzen,
+                    // damit sie nach einem vorherigen Rennen wieder sichtbar ist
+                    if (raceController.ampelStatus === 1) {
+                        ampelAusAnimation.stop()
+                        ampelBox.opacity = 1
                     }
                 }
             }

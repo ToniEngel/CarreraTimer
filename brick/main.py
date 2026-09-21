@@ -342,6 +342,9 @@ def main():
         max_runden = RUNDEN_OPTIONEN[runden_idx]
         hub.light.on(Color.RED)
 
+        # Rundenzahl an App melden
+        print("RUNDEN:" + str(max_runden))
+
         # Ampelsequenz – wiederholen bei Fruehstart
         sauberer_start = False
         while not sauberer_start:

@@ -179,6 +179,13 @@ class RaceController(QObject):
         if befehl == "READY":
             self._reset_rennen()
 
+        elif befehl == "RUNDEN" and len(teile) >= 2:
+            try:
+                anzahl = int(teile[1])
+                self.maxRunden = anzahl
+            except ValueError:
+                pass
+
         elif befehl == "AMPEL" and len(teile) >= 2:
             try:
                 stufe = int(teile[1])
