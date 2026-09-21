@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="description" content="Carrera Renntimer – Echtzeit Rundenzeitmessung direkt über Bluetooth">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>🏎️ Carrera Timer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+    <style>
+    :root {
+        --bg:#080810; --card:#0f0f1e; --card2:#141428;
+        --border:#1c1c34; --border2:#282848;
+        --s1:#ff3232; --s1-glow:#ff5555; --s2:#2d80ff; --s2-glow:#5599ff;
+        --gold:#ffd700; --purple:#b040ff; --green:#00e676; --orange:#ff6d00;
+        --text:#e0e0f0; --text-mid:#8888aa; --text-dim:#505070;
+        --font:'Inter',-apple-system,sans-serif; --mono:'JetBrains Mono','Menlo',monospace;
+        --r:16px; --rsm:10px; --t:0.22s ease;
+    }
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);-webkit-tap-highlight-color:transparent;overflow-x:hidden}
+    body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(28,28,52,.5) 1px,transparent 1px),linear-gradient(90deg,rgba(28,28,52,.5) 1px,transparent 1px);background-size:28px 28px;pointer-events:none;z-index:0}
+    #app{position:relative;z-index:1;max-width:860px;margin:0 auto;padding:14px;display:flex;flex-direction:column;gap:12px;min-height:100vh}
+    /* HEADER */
+    .header{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;background:var(--card);border:1px solid var(--border);border-radius:var(--r)}
+    .logo{font-size:20px;font-weight:900;letter-spacing:3px}
+    .header-right{display:flex;align-items:center;gap:10px}
+    .badge{display:flex;align-items:center;gap:7px;padding:5px 13px;background:var(--card2);border:1px solid var(--border2);border-radius:20px}
+    .badge-label{font-size:10px;font-weight:700;letter-spacing:1px;color:var(--text-dim)}
+    .badge-value{font-size:15px;font-weight:700}
+    .ble-btn{display:flex;align-items:center;gap:7px;padding:6px 13px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.5px;cursor:pointer;transition:var(--t);border:1px solid;user-select:none}
+    .ble-btn.off{background:rgba(255,50,50,.1);border-color:rgba(255,50,50,.3);color:#ff9999}
+    .ble-btn.on{background:rgba(0,230,118,.1);border-color:rgba(0,230,118,.3);color:var(--green)}
+    .ble-dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+    .ble-dot.blink{animation:blink 1.2s infinite}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+    /* TABS */
+    .tabs{display:flex;gap:8px}
+    .tab{flex:1;padding:9px;text-align:center;background:var(--card);border:1px solid var(--border);border-radius:var(--rsm);font-size:11px;font-weight:700;letter-spacing:1px;color:var(--text-dim);cursor:pointer;transition:var(--t)}
+    .tab.active{background:var(--card2);border-color:var(--border2);color:var(--text)}
+    /* AMPEL */
+    #ampelWrap{display:flex;justify-content:center;align-items:center;gap:18px;padding:18px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);transition:opacity .5s ease}
+    #ampelWrap.hidden{display:none}
+    .ampel-light{width:52px;height:52px;border-radius:50%;background:#14142a;border:2px solid #222236;transition:background .12s,border-color .12s,box-shadow .12s}
+    .ampel-light.an{background:#ff2020;border-color:#ff4444;box-shadow:0 0 22px rgba(255,30,30,.65),0 0 6px rgba(255,30,30,.9) inset;animation:lpop .15s ease}
+    @keyframes lpop{0%{transform:scale(1)}50%{transform:scale(1.18)}100%{transform:scale(1)}}
+    /* RACE PANELS */
+    .race-panels{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .spur-panel{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;transition:border-color .3s,box-shadow .3s}
+    .spur-panel.sieger{border-color:var(--gold);box-shadow:0 0 28px rgba(255,215,0,.12)}
+    .stripe{height:4px}
+    .spur-body{padding:18px 14px;display:flex;flex-direction:column;gap:10px}
+    .spur-name{font-size:15px;font-weight:700;letter-spacing:3px}
+    .runden-row{display:flex;align-items:baseline;gap:6px}
+    .runden-lbl{font-size:10px;font-weight:700;letter-spacing:1px;color:var(--text-dim)}
+    .runden-val{font-size:19px;font-weight:700}
+    .prog{height:5px;background:#14142a;border-radius:3px;overflow:hidden}
+    .prog-fill{height:100%;border-radius:3px;width:0;transition:width .4s cubic-bezier(.4,0,.2,1)}
+    .zeit-lbl{font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--text-dim);margin-top:2px}
+    .letzte-zeit{font-size:38px;font-weight:700;font-family:var(--mono);line-height:1;color:var(--text)}
+    .letzte-zeit.flash{animation:zflash .55s ease}
+    @keyframes zflash{0%{color:var(--fc,var(--text))}100%{color:var(--text)}}
+    .beste-box{background:#18102a;border:1px solid #2a1a48;border-radius:9px;padding:9px 12px;display:none}
+    .beste-box.on{display:block}
+    .beste-hdr{display:flex;align-items:center;gap:5px;margin-bottom:3px;font-size:12px}
+    .beste-lbl{font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--purple)}
+    .beste-val{font-size:21px;font-weight:700;font-family:var(--mono);color:var(--purple)}
+    .finish-badge{padding:9px;border-radius:7px;text-align:center;font-weight:700;font-size:14px;letter-spacing:2px;display:none}
+    .finish-badge.on{display:block}
+    .finish-badge.sieger-style{background:rgba(255,215,0,.08);border:1px solid var(--gold);color:var(--gold)}
+    .finish-badge.fertig-style{background:var(--card2);border:1px solid var(--border2);color:var(--text-mid)}
+    /* STATUSBAR */
+    .statusbar{padding:7px 16px;background:var(--card);border:1px solid var(--border);border-radius:var(--rsm);font-size:11px;color:var(--text-dim);text-align:center}
+    /* LEADERBOARD */
+    #lb-view{display:none;flex-direction:column;gap:12px}
+    #lb-view.on{display:flex}
+    .lb-header{display:flex;align-items:center;gap:12px;padding:14px 18px;background:var(--card);border:1px solid var(--border);border-radius:var(--r)}
+    .lb-title{font-size:17px;font-weight:700;letter-spacing:2px}
+    .lb-filter{display:flex;gap:7px;margin-left:auto}
+    .lb-fbtn{padding:5px 13px;border-radius:20px;border:1px solid var(--border);background:var(--card2);font-size:11px;font-weight:700;color:var(--text-dim);cursor:pointer;transition:var(--t)}
+    .lb-fbtn.on{color:var(--text);border-color:var(--border2)}
+    .lb-fbtn.s1.on{color:var(--s1);border-color:var(--s1)}
+    .lb-fbtn.s2.on{color:var(--s2);border-color:var(--s2)}
+    .lb-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+    .lb-row{display:grid;grid-template-columns:44px 1fr auto auto;gap:10px;align-items:center;padding:12px 18px;border-bottom:1px solid var(--border);transition:background var(--t)}
+    .lb-row:last-child{border-bottom:none}
+    .lb-row:hover{background:var(--card2)}
+    .lb-row.hdr{font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--text-dim);background:var(--card2)}
+    .lb-rank{font-size:18px;font-weight:900;text-align:center;color:var(--text-dim)}
+    .lb-rank.g{color:#ffd700}.lb-rank.s{color:#c0c0c0}.lb-rank.b{color:#cd7f32}
+    .lb-spur{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600}
+    .lb-dot{width:9px;height:9px;border-radius:50%}
+    .lb-zeit{font-family:var(--mono);font-size:17px;font-weight:700}
+    .lb-datum{font-size:11px;color:var(--text-dim);text-align:right}
+    .lb-empty{padding:36px;text-align:center;color:var(--text-dim);font-size:13px}
+    /* OVERLAYS */
+    .overlay{position:fixed;inset:0;z-index:200;display:none;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:32px;text-align:center}
+    .overlay.show{display:flex}
+    .ov-bg{position:absolute;inset:0}
+    .ov-body{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:18px}
+    /* CONNECT */
+    #ov-connect{background:var(--bg)}
+    #ov-connect .ov-bg{background:radial-gradient(ellipse at 50% 60%,rgba(45,128,255,.07) 0%,transparent 70%)}
+    .conn-icon{font-size:80px;animation:floatA 3s ease-in-out infinite}
+    @keyframes floatA{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
+    .conn-title{font-size:30px;font-weight:900;letter-spacing:4px}
+    .conn-sub{font-size:14px;color:var(--text-mid);max-width:300px;line-height:1.6}
+    .conn-hint{font-size:12px;color:var(--text-dim);max-width:280px;line-height:1.5}
+    .btn-primary{padding:17px 44px;background:linear-gradient(135deg,var(--s2),#6aabff);border:none;border-radius:50px;color:#fff;font-size:16px;font-weight:700;letter-spacing:2px;cursor:pointer;box-shadow:0 8px 28px rgba(45,128,255,.35);transition:transform .12s,box-shadow .12s}
+    .btn-primary:active{transform:scale(.96);box-shadow:0 4px 14px rgba(45,128,255,.25)}
+    .btn-primary:disabled{opacity:.4;cursor:not-allowed;transform:none}
+    #conn-status{font-size:13px;color:var(--text-dim);min-height:20px}
+    /* FRUEHSTART */
+    #ov-frueh .ov-bg{background:rgba(0,0,0,.86)}
+    .frueh-icon{font-size:72px;animation:wWobble .5s ease infinite alternate}
+    @keyframes wWobble{from{transform:scale(1)}to{transform:scale(1.18)}}
+    .frueh-title{font-size:50px;font-weight:900;letter-spacing:6px;color:var(--orange);animation:tBlink .7s ease infinite alternate}
+    @keyframes tBlink{from{opacity:1}to{opacity:.45}}
+    .frueh-spur{font-size:26px;font-weight:700}
+    .frueh-hint{font-size:13px;color:var(--text-dim)}
+    /* WINNER */
+    #ov-winner .ov-bg{background:rgba(0,0,0,.88)}
+    .win-trophy{font-size:88px;animation:tSpin 2s ease-in-out infinite}
+    @keyframes tSpin{0%,100%{transform:rotate(-6deg) scale(1)}50%{transform:rotate(6deg) scale(1.1)}}
+    .win-title{font-size:50px;font-weight:900;letter-spacing:8px;color:var(--gold);animation:gGlow 1.5s ease infinite alternate}
+    @keyframes gGlow{from{text-shadow:0 0 20px rgba(255,215,0,.4)}to{text-shadow:0 0 50px rgba(255,215,0,.9),0 0 100px rgba(255,215,0,.3)}}
+    .win-badge{padding:15px 38px;border-radius:14px;font-size:26px;font-weight:700;letter-spacing:4px;color:#fff;border:2px solid var(--gold)}
+    .win-hint{font-size:13px;color:var(--text-dim);cursor:pointer}
+    /* KONFETTI */
+    #konfetti{position:fixed;inset:0;pointer-events:none;z-index:199;overflow:hidden}
+    .kp{position:absolute;top:-20px;animation:kFall linear infinite;border-radius:2px}
+    @keyframes kFall{to{transform:translateY(110vh) rotate(540deg)}}
+    @media(max-width:560px){.logo{font-size:15px;letter-spacing:2px}.letzte-zeit{font-size:28px}.ampel-light{width:42px;height:42px}.win-title{font-size:38px}.frueh-title{font-size:38px}}
+    </style>
+</head>
+<body>
+<div id="konfetti"></div>
+
+<!-- CONNECT OVERLAY -->
+<div class="overlay show" id="ov-connect">
+    <div class="ov-bg"></div>
+    <div class="ov-body">
+        <div class="conn-icon">🏎️</div>
+        <div class="conn-title">CARRERA TIMER</div>
+        <div class="conn-sub">Direkte Bluetooth-Verbindung zwischen iPad und Pybricks Hub</div>
+        <button class="btn-primary" id="btn-connect" onclick="bleConnect()">VERBINDEN</button>
+        <div id="conn-status">Bereit</div>
+        <div class="conn-hint">Diese Seite in <strong>Bluefy</strong> öffnen für Web-Bluetooth-Support auf dem iPad.</div>
+    </div>
+</div>
+
+<!-- FRUEHSTART OVERLAY -->
+<div class="overlay" id="ov-frueh" onclick="closeFrueh()">
+    <div class="ov-bg"></div>
+    <div class="ov-body">
+        <div class="frueh-icon">⚠️</div>
+        <div class="frueh-title">FRÜHSTART!</div>
+        <div class="frueh-spur" id="frueh-spur-txt"></div>
+        <div class="frueh-hint">Tippen um fortzufahren</div>
+    </div>
+</div>
+
+<!-- WINNER OVERLAY -->
+<div class="overlay" id="ov-winner">
+    <div class="ov-bg"></div>
+    <div class="ov-body">
+        <div class="win-trophy">🏆</div>
+        <div class="win-title">SIEGER</div>
+        <div class="win-badge" id="win-badge">SPUR 1</div>
+        <div class="win-hint" onclick="closeWinner()">Tippen um fortzufahren</div>
+    </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+    <div class="header">
+        <div class="logo">🏎️ CARRERA</div>
+        <div class="header-right">
+            <div class="badge">
+                <span class="badge-label">RUNDEN</span>
+                <span class="badge-value" id="max-runden-lbl">10</span>
+            </div>
+            <div class="ble-btn off" id="ble-btn" onclick="bleConnect()">
+                <div class="ble-dot blink" id="ble-dot"></div>
+                <span id="ble-txt">GETRENNT</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="tabs">
+        <div class="tab active" id="tab-race" onclick="switchTab('race')">🏁 RENNEN</div>
+        <div class="tab"        id="tab-lb"   onclick="switchTab('lb')">🏆 BESTZEITEN</div>
+    </div>
+
+    <div id="race-view" style="display:flex;flex-direction:column;gap:12px">
+        <div id="ampelWrap" class="hidden">
+            <div class="ampel-light" id="a0"></div>
+            <div class="ampel-light" id="a1"></div>
+            <div class="ampel-light" id="a2"></div>
+            <div class="ampel-light" id="a3"></div>
+            <div class="ampel-light" id="a4"></div>
+        </div>
+        <div class="race-panels">
+            <div class="spur-panel" id="panel-1">
+                <div class="stripe" style="background:var(--s1)"></div>
+                <div class="spur-body">
+                    <div class="spur-name" style="color:var(--s1)">SPUR 1</div>
+                    <div class="runden-row"><span class="runden-lbl">RUNDE</span><span class="runden-val" id="s1-runde">0 / 10</span></div>
+                    <div class="prog"><div class="prog-fill" id="s1-prog" style="background:var(--s1)"></div></div>
+                    <div class="zeit-lbl">LETZTE RUNDE</div>
+                    <div class="letzte-zeit" id="s1-lz" style="--fc:var(--s1-glow)">--:--.---</div>
+                    <div class="beste-box" id="s1-bb"><div class="beste-hdr"><span>⚡</span><span class="beste-lbl">BESTE RUNDE</span></div><div class="beste-val" id="s1-bz">--:--.---</div></div>
+                    <div class="finish-badge" id="s1-fin"></div>
+                </div>
+            </div>
+            <div class="spur-panel" id="panel-2">
+                <div class="stripe" style="background:var(--s2)"></div>
+                <div class="spur-body">
+                    <div class="spur-name" style="color:var(--s2)">SPUR 2</div>
+                    <div class="runden-row"><span class="runden-lbl">RUNDE</span><span class="runden-val" id="s2-runde">0 / 10</span></div>
+                    <div class="prog"><div class="prog-fill" id="s2-prog" style="background:var(--s2)"></div></div>
+                    <div class="zeit-lbl">LETZTE RUNDE</div>
+                    <div class="letzte-zeit" id="s2-lz" style="--fc:var(--s2-glow)">--:--.---</div>
+                    <div class="beste-box" id="s2-bb"><div class="beste-hdr"><span>⚡</span><span class="beste-lbl">BESTE RUNDE</span></div><div class="beste-val" id="s2-bz">--:--.---</div></div>
+                    <div class="finish-badge" id="s2-fin"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="lb-view">
+        <div class="lb-header">
+            <div class="lb-title">🏆 BESTZEITEN</div>
+            <div class="lb-filter">
+                <button class="lb-fbtn on" id="lb-all" onclick="setLbFilter('all')">ALLE</button>
+                <button class="lb-fbtn s1" id="lb-s1"  onclick="setLbFilter('1')">SPUR 1</button>
+                <button class="lb-fbtn s2" id="lb-s2"  onclick="setLbFilter('2')">SPUR 2</button>
+            </div>
+        </div>
+        <div class="lb-card" id="lb-card">
+            <div class="lb-row hdr"><div>#</div><div>SPUR</div><div>ZEIT</div><div>DATUM</div></div>
+            <div class="lb-empty" id="lb-empty">Noch keine Bestzeiten gespeichert</div>
+        </div>
+    </div>
+
+    <div class="statusbar" id="statusbar">Verbinde den Hub um ein Rennen zu starten</div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script>
+/* ════════════════════════════════════════════════════════
+   FIREBASE KONFIGURATION
+   ────────────────────────────────────────────────────────
+   Setup (~10 min):
+   1. https://console.firebase.google.com → einloggen
+   2. "Neues Projekt" erstellen → z.B. "CarreraTimer"
+   3. "</> Web-App hinzufügen" → App registrieren
+   4. Firestore Database → Erstellen → Test-Modus
+   5. Projektkonfiguration → firebaseConfig kopieren + einfügen
+   ════════════════════════════════════════════════════════ */
+const FIREBASE_CONFIG = {
+    apiKey:            "DEIN_API_KEY",
+    authDomain:        "DEIN_PROJEKT.firebaseapp.com",
+    projectId:         "DEIN_PROJEKT_ID",
+    storageBucket:     "DEIN_PROJEKT.firebasestorage.app",
+    messagingSenderId: "DEINE_SENDER_ID",
+    appId:             "DEINE_APP_ID"
+};
+
+/* ════ BLE UUIDs ════════════════════════════════════════ */
+const UUID_PB_SVC  = 'c5f50001-8280-46da-89f4-6d8051e4aeef';
+const UUID_PB_CHAR = 'c5f50002-8280-46da-89f4-6d8051e4aeef';
+const UUID_NUS_SVC = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+const UUID_NUS_TX  = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
+
+/* ════ Firebase Init ════════════════════════════════════ */
+const FB_AKTIV = FIREBASE_CONFIG.apiKey !== 'DEIN_API_KEY';
+let db = null;
+if (FB_AKTIV) {
+    try { firebase.initializeApp(FIREBASE_CONFIG); db = firebase.firestore(); }
+    catch(e) { console.warn('Firebase Init:', e); }
+}
+
+/* ════ Rennzustand ══════════════════════════════════════ */
+const race = {
+    maxRunden: 10,
+    spuren: [
+        {runde:0, letzteMs:0, besteMs:0, fertig:false},
+        {runde:0, letzteMs:0, besteMs:0, fertig:false}
+    ]
+};
+let sessionBeste = [null, null];
+let lbFilter = 'all';
+let bleDevice = null;
+let rxPuffer = '';
+
+/* ════ Helpers ══════════════════════════════════════════ */
+function fmtMs(ms) {
+    if (!ms || ms <= 0) return '--:--.---';
+    const m = Math.floor(ms/60000), s = Math.floor((ms%60000)/1000), x = ms%1000;
+    return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}.${String(x).padStart(3,'0')}`;
+}
+const $ = id => document.getElementById(id);
+const status = txt => $('statusbar').textContent = txt;
+
+/* ════ UI Reset ═════════════════════════════════════════ */
+function resetRace() {
+    race.spuren = [{runde:0,letzteMs:0,besteMs:0,fertig:false},{runde:0,letzteMs:0,besteMs:0,fertig:false}];
+    sessionBeste = [null, null];
+    for (let s=1;s<=2;s++) {
+        $(`s${s}-runde`).textContent = `0 / ${race.maxRunden}`;
+        $(`s${s}-prog`).style.width = '0%';
+        $(`s${s}-lz`).textContent = '--:--.---';
+        $(`s${s}-bz`).textContent = '--:--.---';
+        $(`s${s}-bb`).classList.remove('on');
+        const fin = $(`s${s}-fin`);
+        fin.className='finish-badge'; fin.textContent='';
+        $(`panel-${s}`).classList.remove('sieger');
+    }
+    ampelAus(); stopKonfetti();
+    $('ov-winner').classList.remove('show');
+}
+
+/* ════ Ampel ════════════════════════════════════════════ */
+function showAmpel(stufe) {
+    const w = $('ampelWrap');
+    w.classList.remove('hidden'); w.style.opacity='1';
+    for(let i=0;i<5;i++) $(`a${i}`).classList.toggle('an', i < stufe);
+}
+function ampelAus() {
+    const w=$('ampelWrap'); w.style.opacity='0';
+    setTimeout(()=>w.classList.add('hidden'),500);
+    for(let i=0;i<5;i++) $(`a${i}`).classList.remove('an');
+}
+
+/* ════ Spur Update ══════════════════════════════════════ */
+function updateSpur(idx) {
+    const s=idx+1, sp=race.spuren[idx];
+    const pct = race.maxRunden>0 ? Math.min(sp.runde/race.maxRunden*100,100) : 0;
+    $(`s${s}-runde`).textContent = `${sp.runde} / ${race.maxRunden}`;
+    $(`s${s}-prog`).style.width = pct+'%';
+    const lz=$(`s${s}-lz`); lz.textContent=fmtMs(sp.letzteMs);
+    lz.classList.remove('flash'); void lz.offsetWidth; lz.classList.add('flash');
+    if (sp.besteMs>0) { $(`s${s}-bb`).classList.add('on'); $(`s${s}-bz`).textContent=fmtMs(sp.besteMs); }
+}
+
+/* ════ Winner ═══════════════════════════════════════════ */
+function showWinner(sn) {
+    const badge=$('win-badge');
+    badge.textContent=`SPUR ${sn}`;
+    badge.style.background = sn===1?'rgba(255,50,50,.25)':'rgba(45,128,255,.25)';
+    $(`panel-${sn}`).classList.add('sieger');
+    const fin=$(`s${sn}-fin`); fin.textContent='🏆 GEWONNEN!'; fin.classList.add('on','sieger-style');
+    startKonfetti(); $('ov-winner').classList.add('show');
+    status(`🏆 Rennen beendet – Sieger: Spur ${sn}`);
+    // Bestzeiten in Firebase
+    if (FB_AKTIV && db) {
+        sessionBeste.forEach((ms,idx)=>{
+            if (ms===null) return;
+            db.collection('laptimes').add({spur:idx+1, zeit_ms:ms, datum:firebase.firestore.FieldValue.serverTimestamp()})
+              .catch(e=>console.warn('Firebase write:',e));
+        });
+    }
+    loadLb();
+}
+
+/* ════ Protokoll Parser ═════════════════════════════════ */
+function handleMsg(msg) {
+    console.log('[BLE]', msg);
+    const p=msg.split(':'), cmd=p[0];
+    if (cmd==='READY') { resetRace(); status('Hub bereit – drücke die linke Taste am Brick'); }
+    else if (cmd==='RUNDEN' && p[1]) {
+        race.maxRunden=parseInt(p[1]);
+        $('max-runden-lbl').textContent=p[1];
+        for(let s=1;s<=2;s++) $(`s${s}-runde`).textContent=`${race.spuren[s-1].runde} / ${p[1]}`;
+        status(`${p[1]} Runden – Ampelsequenz startet gleich…`);
+    }
+    else if (cmd==='AMPEL' && p[1]) { showAmpel(parseInt(p[1])); status('🔴 Ampelsequenz…'); }
+    else if (cmd==='GO') { ampelAus(); status('🏁 Rennen läuft!'); }
+    else if (cmd==='FALSE_START' && p[1]) {
+        const sn=parseInt(p[1]); ampelAus();
+        const col=sn===1?'var(--s1)':'var(--s2)';
+        $('frueh-spur-txt').innerHTML=`<span style="color:${col}">Spur ${sn}</span>`;
+        $('ov-frueh').classList.add('show'); status(`⚠️ Frühstart Spur ${sn}!`);
+    }
+    else if (cmd==='LAP' && p.length>=4) {
+        const sn=parseInt(p[1]), runde=parseInt(p[2]), ms=parseInt(p[3]), idx=sn-1;
+        const sp=race.spuren[idx]; sp.runde=runde; sp.letzteMs=ms;
+        if (sp.besteMs===0 || ms<sp.besteMs) { sp.besteMs=ms; sessionBeste[idx]=ms; }
+        updateSpur(idx); status(`Spur ${sn}: Runde ${runde}  –  ${fmtMs(ms)}`);
+    }
+    else if (cmd==='FINISH' && p[1]) {
+        const sn=parseInt(p[1]); race.spuren[sn-1].fertig=true;
+        const fin=$(`s${sn}-fin`); fin.textContent='🏁 FERTIG'; fin.classList.add('on','fertig-style');
+    }
+    else if (cmd==='WINNER' && p[1]) { showWinner(parseInt(p[1])); }
+}
+
+/* ════ BLE ══════════════════════════════════════════════ */
+async function bleConnect() {
+    if (!navigator.bluetooth) {
+        $('conn-status').textContent='❌ Web Bluetooth n/v – bitte Bluefy nutzen'; return;
+    }
+    const btn=$('btn-connect'); btn.disabled=true;
+    $('conn-status').textContent='Suche Hub…';
+    try {
+        bleDevice = await navigator.bluetooth.requestDevice({
+            filters:[{services:[UUID_PB_SVC]},{namePrefix:'Pybricks'}],
+            optionalServices:[UUID_PB_SVC, UUID_NUS_SVC]
+        });
+        bleDevice.addEventListener('gattserverdisconnected', onDisconnect);
+        $('conn-status').textContent='Verbinde…';
+        const server = await bleDevice.gatt.connect();
+        let ok=false;
+        try {
+            const svc=await server.getPrimaryService(UUID_PB_SVC);
+            const ch=await svc.getCharacteristic(UUID_PB_CHAR);
+            await ch.startNotifications(); ch.addEventListener('characteristicvaluechanged',onBleData);
+            ok=true; console.log('✓ Pybricks Service');
+        } catch(_) { console.log('Pybricks n/a → NUS…'); }
+        if (!ok) {
+            const svc=await server.getPrimaryService(UUID_NUS_SVC);
+            const ch=await svc.getCharacteristic(UUID_NUS_TX);
+            await ch.startNotifications(); ch.addEventListener('characteristicvaluechanged',onBleData);
+            console.log('✓ NUS');
+        }
+        setBleUI(true, bleDevice.name||'Hub');
+        $('ov-connect').classList.remove('show');
+        status('✅ Verbunden – drücke die linke Taste am Brick');
+    } catch(e) {
+        console.error('BLE:',e); $('conn-status').textContent='Fehler: '+e.message; btn.disabled=false;
+    }
+}
+
+function onBleData(evt) {
+    const raw=new Uint8Array(evt.target.value.buffer);
+    if (!raw.length) return;
+    // Pybricks Stream-Protokoll: Byte 0 = Typ (0x01=stdout, 0x02=stderr)
+    let bytes;
+    if (raw[0]===0x01||raw[0]===0x02) bytes=raw.slice(1);
+    else if (raw[0]<32) return;
+    else bytes=raw;
+    rxPuffer+=new TextDecoder().decode(bytes);
+    let pos;
+    while((pos=rxPuffer.indexOf('\n'))!==-1){
+        const line=rxPuffer.slice(0,pos).trim(); rxPuffer=rxPuffer.slice(pos+1);
+        if(line) handleMsg(line);
+    }
+}
+
+function onDisconnect() {
+    setBleUI(false,''); bleDevice=null; rxPuffer='';
+    $('ov-connect').classList.add('show');
+    $('conn-status').textContent='Verbindung verloren';
+    $('btn-connect').disabled=false;
+    status('Verbindung getrennt');
+}
+
+function setBleUI(on, name) {
+    $('ble-btn').className='ble-btn '+(on?'on':'off');
+    $('ble-dot').classList.toggle('blink',!on);
+    $('ble-txt').textContent=on?(name.toUpperCase()||'VERBUNDEN'):'GETRENNT';
+}
+
+/* ════ Overlay Actions ══════════════════════════════════ */
+function closeFrueh()  { $('ov-frueh').classList.remove('show'); }
+function closeWinner() { $('ov-winner').classList.remove('show'); stopKonfetti(); }
+
+/* ════ Tabs ═════════════════════════════════════════════ */
+function switchTab(tab) {
+    const r=tab==='race';
+    $('tab-race').classList.toggle('active',r);
+    $('tab-lb').classList.toggle('active',!r);
+    $('race-view').style.display=r?'flex':'none';
+    $('lb-view').classList.toggle('on',!r);
+    if(!r) loadLb();
+}
+
+/* ════ Leaderboard ══════════════════════════════════════ */
+function setLbFilter(f) {
+    lbFilter=f;
+    ['all','s1','s2'].forEach(id=>$('lb-'+id).classList.remove('on'));
+    $('lb-'+(f==='all'?'all':'s'+f)).classList.add('on');
+    loadLb();
+}
+
+async function loadLb() {
+    const empty=$('lb-empty'), card=$('lb-card');
+    if (!FB_AKTIV||!db) { empty.textContent='⚙️ Firebase nicht konfiguriert – siehe Quellcode'; empty.style.display='block'; return; }
+    try {
+        let q=db.collection('laptimes').orderBy('zeit_ms','asc').limit(25);
+        if (lbFilter!=='all') q=q.where('spur','==',parseInt(lbFilter));
+        const snap=await q.get();
+        card.querySelectorAll('.lb-row:not(.hdr)').forEach(r=>r.remove());
+        if (snap.empty) { empty.style.display='block'; return; }
+        empty.style.display='none';
+        const RANKS=['🥇','🥈','🥉'], RC=['g','s','b'];
+        snap.docs.forEach((doc,i)=>{
+            const d=doc.data(), row=document.createElement('div');
+            row.className='lb-row';
+            const col=d.spur===1?'var(--s1)':'var(--s2)';
+            const datum=d.datum?d.datum.toDate().toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'2-digit'}):'–';
+            row.innerHTML=`<div class="lb-rank ${RC[i]||''}">${RANKS[i]||(i+1)}</div><div class="lb-spur"><div class="lb-dot" style="background:${col}"></div>Spur ${d.spur}</div><div class="lb-zeit">${fmtMs(d.zeit_ms)}</div><div class="lb-datum">${datum}</div>`;
+            card.appendChild(row);
+        });
+    } catch(e) { console.error(e); empty.textContent='❌ '+e.message; empty.style.display='block'; }
+}
+
+/* ════ Konfetti ═════════════════════════════════════════ */
+const KFARBEN=['#ff3232','#2d80ff','#ffd700','#44ff88','#ff44ff','#44ffee'];
+function startKonfetti() {
+    const c=$('konfetti'); c.innerHTML='';
+    for(let i=0;i<70;i++){
+        const p=document.createElement('div'); p.className='kp';
+        p.style.cssText=`left:${Math.random()*100}vw;background:${KFARBEN[i%KFARBEN.length]};width:${6+Math.random()*6}px;height:${8+Math.random()*10}px;border-radius:${Math.random()>.5?'50%':'2px'};animation-duration:${2+Math.random()*3}s;animation-delay:${Math.random()*2}s`;
+        c.appendChild(p);
+    }
+}
+function stopKonfetti() { $('konfetti').innerHTML=''; }
+</script>
+</body>
+</html>
