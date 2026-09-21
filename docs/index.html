@@ -145,7 +145,8 @@
         <div class="conn-icon">🏎️</div>
         <div class="conn-title">CARRERA TIMER</div>
         <div class="conn-sub">Direkte Bluetooth-Verbindung zwischen iPad und Pybricks Hub</div>
-        <button class="btn-primary" id="btn-connect" onclick="bleConnect()">VERBINDEN</button>
+        <button class="btn-primary" id="btn-connect" onclick="bleConnect(false)">VERBINDEN</button>
+        <button style="background:none;border:1px solid var(--border2);color:var(--text-mid);padding:10px 28px;border-radius:50px;font-size:13px;font-weight:700;cursor:pointer;margin-top:-8px" onclick="bleConnect(true)">Alle Geräte anzeigen…</button>
         <div id="conn-status">Bereit</div>
         <div class="conn-hint">Diese Seite in <strong>Bluefy</strong> öffnen für Web-Bluetooth-Support auf dem iPad.</div>
     </div>
@@ -400,33 +401,51 @@ function handleMsg(msg) {
 }
 
 /* ════ BLE ══════════════════════════════════════════════ */
-async function bleConnect() {
+async function bleConnect(alleGeraete=false) {
     if (!navigator.bluetooth) {
         $('conn-status').textContent='❌ Web Bluetooth n/v – bitte Bluefy nutzen'; return;
     }
     const btn=$('btn-connect'); btn.disabled=true;
     $('conn-status').textContent='Suche Hub…';
     try {
-        bleDevice = await navigator.bluetooth.requestDevice({
-            filters:[{services:[UUID_PB_SVC]},{namePrefix:'Pybricks'}],
-            optionalServices:[UUID_PB_SVC, UUID_NUS_SVC]
-        });
+        const opts = alleGeraete
+            ? { acceptAllDevices: true,
+                optionalServices:[UUID_PB_SVC, UUID_NUS_SVC] }
+            : { filters:[{namePrefix:"Pybricks"},{namePrefix:"Pybricks Hub"},{services:[UUID_PB_SVC]}],
+                optionalServices:[UUID_PB_SVC, UUID_NUS_SVC] };
+
+        bleDevice = await navigator.bluetooth.requestDevice(opts);
         bleDevice.addEventListener('gattserverdisconnected', onDisconnect);
         $('conn-status').textContent='Verbinde…';
         const server = await bleDevice.gatt.connect();
         let ok=false;
+        // Pybricks Service
         try {
             const svc=await server.getPrimaryService(UUID_PB_SVC);
             const ch=await svc.getCharacteristic(UUID_PB_CHAR);
             await ch.startNotifications(); ch.addEventListener('characteristicvaluechanged',onBleData);
             ok=true; console.log('✓ Pybricks Service');
         } catch(_) { console.log('Pybricks n/a → NUS…'); }
+        // NUS Fallback
         if (!ok) {
-            const svc=await server.getPrimaryService(UUID_NUS_SVC);
-            const ch=await svc.getCharacteristic(UUID_NUS_TX);
-            await ch.startNotifications(); ch.addEventListener('characteristicvaluechanged',onBleData);
-            console.log('✓ NUS');
+            try {
+                const svc=await server.getPrimaryService(UUID_NUS_SVC);
+                const ch=await svc.getCharacteristic(UUID_NUS_TX);
+                await ch.startNotifications(); ch.addEventListener('characteristicvaluechanged',onBleData);
+                ok=true; console.log('✓ NUS');
+            } catch(_) { console.log('NUS n/a → alle Services…'); }
         }
+        // Letzter Fallback: alle Notify-Charakteristiken abonnieren
+        if (!ok) {
+            for (const svc of server.getPrimaryServices ? await server.getPrimaryServices() : []) {
+                for (const ch of await svc.getCharacteristics()) {
+                    if (ch.properties.notify) {
+                        try { await ch.startNotifications(); ch.addEventListener('characteristicvaluechanged',onBleData); ok=true; } catch(_){}
+                    }
+                }
+            }
+        }
+        if (!ok) throw new Error('Keine Notify-Charakteristik gefunden');
         setBleUI(true, bleDevice.name||'Hub');
         $('ov-connect').classList.remove('show');
         status('✅ Verbunden – drücke die linke Taste am Brick');
