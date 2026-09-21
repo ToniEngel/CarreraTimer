@@ -83,10 +83,9 @@ ApplicationWindow {
 
             Item { Layout.fillWidth: true }
 
-            // Rundenanzahl-Einstellung
+            // Rundenanzahl-Anzeige (wird vom Hub gesetzt)
             RowLayout {
                 spacing: 8
-                visible: !raceController.rennLaeuft
 
                 Text {
                     text: "RUNDEN:"
@@ -96,63 +95,11 @@ ApplicationWindow {
                     font.letterSpacing: 1
                 }
 
-                Rectangle {
-                    width: 100
-                    height: 36
-                    radius: 8
-                    color: farbeKarte
-                    border.color: farbeKarteRand
-                    border.width: 1
-
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.margins: 4
-                        spacing: 2
-
-                        // Minus-Button
-                        Rectangle {
-                            width: 28; height: 28; radius: 6
-                            color: minusMaus.containsMouse ? "#2a2a3a" : "transparent"
-                            Text {
-                                anchors.centerIn: parent
-                                text: "−"; color: farbeText; font.pixelSize: 18
-                            }
-                            MouseArea {
-                                id: minusMaus
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                onClicked: {
-                                    if (raceController.maxRunden > 1)
-                                        raceController.setMaxRunden(raceController.maxRunden - 1)
-                                }
-                            }
-                        }
-
-                        Text {
-                            Layout.fillWidth: true
-                            text: raceController.maxRunden
-                            color: farbeText
-                            font.pixelSize: 18
-                            font.bold: true
-                            horizontalAlignment: Text.AlignHCenter
-                        }
-
-                        // Plus-Button
-                        Rectangle {
-                            width: 28; height: 28; radius: 6
-                            color: plusMaus.containsMouse ? "#2a2a3a" : "transparent"
-                            Text {
-                                anchors.centerIn: parent
-                                text: "+"; color: farbeText; font.pixelSize: 18
-                            }
-                            MouseArea {
-                                id: plusMaus
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                onClicked: raceController.setMaxRunden(raceController.maxRunden + 1)
-                            }
-                        }
-                    }
+                Text {
+                    text: raceController.maxRunden
+                    color: farbeText
+                    font.pixelSize: 18
+                    font.bold: true
                 }
             }
 
