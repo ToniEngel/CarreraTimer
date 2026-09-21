@@ -34,10 +34,8 @@ ENTPRELLZEIT_MS = 2000    # 2s Sperre nach Ampelstart und zwischen den Runden
 # Waehlbare Rundenzahlen (rechter Knopf iteriert durch)
 RUNDEN_OPTIONEN = [10, 20, 30, 40, 50]
 
-# Beep-Frequenzen pro Spur bei Rundenzaehlung
-BEEP_SPUR1_HZ = 880   # A5 – hoeher
-BEEP_SPUR2_HZ = 587   # D5 – tiefer
-BEEP_DAUER_MS = 15    # EXTREM KURZ (vorher 80), damit der Sensor nicht blockiert!
+# Tonausgabe waehrend des Rennens wurde in die Web-App ausgelagert,
+# um die Messschleife nicht durch blockierende Beeps zu verlangsamen.
 
 
 # ---------------------------------------------------------------------------
@@ -224,7 +222,6 @@ def rennen(max_runden):
     gesamt_zeit  = [0, 0]          # Gesamtzeit bei Finish
 
     sensoren = [sensor_spur1, sensor_spur2]
-    beep_hz  = [BEEP_SPUR1_HZ, BEEP_SPUR2_HZ]
 
     # Initial-Anzeige: volle Runden fuer beide Spuren
     zeige_rundenfortschritt(max_runden, max_runden)
@@ -250,9 +247,6 @@ def rennen(max_runden):
 
                 spur_nr = spur + 1  # 1-basiert fuer Protokoll
                 print("LAP:" + str(spur_nr) + ":" + str(runden[spur]) + ":" + str(rundenzeit))
-
-                # Kurzer Beep – unterschiedliche Tonhoehe pro Spur
-                hub.speaker.beep(beep_hz[spur], BEEP_DAUER_MS)
 
                 # Rundenfortschritt auf Matrix aktualisieren
                 rest1 = max_runden - runden[0]

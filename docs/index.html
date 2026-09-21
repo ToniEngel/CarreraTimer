@@ -285,6 +285,22 @@ if (FB_AKTIV) {
     catch(e) { console.warn('Firebase Init:', e); }
 }
 
+/* ════ Sound System ═════════════════════════════════════ */
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function playBeep(freq) {
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.type = 'square';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.1);
+}
+
 /* ════ Rennzustand ══════════════════════════════════════ */
 const race = {
     maxRunden: 10,
@@ -390,6 +406,10 @@ function handleMsg(msg) {
     else if (cmd==='LAP' && p.length>=4) {
         const sn=parseInt(p[1]), runde=parseInt(p[2]), ms=parseInt(p[3]), idx=sn-1;
         const sp=race.spuren[idx]; sp.runde=runde; sp.letzteMs=ms;
+        
+        // Beep abspielen (Spur 1 = höher, Spur 2 = tiefer)
+        playBeep(sn === 1 ? 880 : 587);
+        
         if (sp.besteMs===0 || ms<sp.besteMs) { sp.besteMs=ms; sessionBeste[idx]=ms; }
         updateSpur(idx); status(`Spur ${sn}: Runde ${runde}  –  ${fmtMs(ms)}`);
     }
