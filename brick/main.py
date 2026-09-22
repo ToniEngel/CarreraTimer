@@ -18,14 +18,14 @@ Protokoll:
 
 from pybricks.hubs import PrimeHub
 from pybricks.pupdevices import ColorSensor
-from pybricks.parameters import Port, Button, Color
+from pybricks.parameters import Port, Button, Color, Side
 from pybricks.tools import wait, StopWatch
 from urandom import randint
 
 # --- Hardware ---
 hub = PrimeHub()
-sensor_spur1 = ColorSensor(Port.A)
-sensor_spur2 = ColorSensor(Port.E)
+sensor_spur1 = ColorSensor(Port.F)
+sensor_spur2 = ColorSensor(Port.B)
 
 # --- Konfiguration ---
 SCHWELLWERT = 30          # reflection() > SCHWELLWERT → Auto erkannt
@@ -42,10 +42,10 @@ RUNDEN_OPTIONEN = [10, 20, 30, 40, 50]
 # Ampel-Hilfsfunktionen
 # ---------------------------------------------------------------------------
 
-def ampel_zeile_an(zeile):
-    """Schaltet eine Zeile (0-4) der 5x5 Matrix auf volle Helligkeit."""
-    for spalte in range(5):
-        hub.display.pixel(zeile, spalte, 100)
+def ampel_stufe_an(stufe):
+    """Schaltet eine Stufe (0-4) der F1-Ampel ein (nur untere 2 LEDs)."""
+    hub.display.pixel(3, stufe, 100)
+    hub.display.pixel(4, stufe, 100)
 
 
 def ampel_aus():
@@ -163,41 +163,68 @@ def ampelsequenz():
     Returns:
         True wenn sauberer Start, False wenn Fruehstart erkannt.
     """
+    hub.display.orientation(Side.LEFT)
     ampel_aus()
     wait(500)
 
-    # 5 Reihen nacheinander einschalten (ca. 1 Sekunde pro Reihe)
-    for zeile in range(5):
-        ampel_zeile_an(zeile)
-        hub.speaker.beep(800, 80)
-        print("AMPEL:" + str(zeile + 1))
-
-        # Waehrend der Wartezeit: Fruehstart pruefen
+    # 5 Stufen nacheinander einschalten (ca. 1 Sekunde pro Stufe)
+    for stufe in range(5):
+        # 100ms Vorlauf-Latenzausgleich fuer BLE (iPad Ampel syncen)
+        print("AMPEL:" + str(stufe + 1))
+        
         timer = StopWatch()
+        while timer.time() < 100:
+            frueh = pruefe_fruehstart()
+            if frueh > 0:
+                print("FALSE_START:" + str(frueh))
+                blinke_warnung()
+                hub.display.orientation(Side.LEFT)
+                return False
+            wait(5)
+
+        ampel_stufe_an(stufe)
+        hub.speaker.beep(800, 80)
+
+        # Waehrend der restlichen Wartezeit: Fruehstart pruefen
         while timer.time() < 1000:
             frueh = pruefe_fruehstart()
             if frueh > 0:
                 print("FALSE_START:" + str(frueh))
                 blinke_warnung()
+                hub.display.orientation(Side.LEFT)
                 return False
             wait(5)
 
     # Alle 5 Lichter an – zufaellige Pause (wie echter F1-Start)
-    # Zwischen 0.2 und 3.0 Sekunden
-    zufalls_pause = 200 + randint(0, 2800)
+    # Zwischen 0.2 und 3.0 Sekunden. Wir stoppen 100ms frueher, um das BLE Signal zu senden.
+    zufalls_pause = max(100, 200 + randint(0, 2800) - 100)
     timer = StopWatch()
     while timer.time() < zufalls_pause:
         frueh = pruefe_fruehstart()
         if frueh > 0:
             print("FALSE_START:" + str(frueh))
             blinke_warnung()
+            hub.display.orientation(Side.LEFT)
             return False
         wait(5)
 
-    # LIGHTS OUT – GO!
-    ampel_aus()
-    hub.speaker.beep(1200, 150)
+    # 100ms Vorlauf fuer iPad
     print("GO")
+    
+    timer_go = StopWatch()
+    while timer_go.time() < 100:
+        frueh = pruefe_fruehstart()
+        if frueh > 0:
+            print("FALSE_START:" + str(frueh))
+            blinke_warnung()
+            hub.display.orientation(Side.LEFT)
+            return False
+        wait(5)
+
+    # LIGHTS OUT – Rennen startet physisch!
+    ampel_aus()
+    hub.display.orientation(Side.LEFT)
+    hub.speaker.beep(1200, 30) # Extrem kurzer Beep (30ms), damit der Hub-Rundentimer exakt startet!
     return True
 
 
@@ -292,6 +319,7 @@ def rennen(max_runden):
 
 def main():
     """Hauptprogramm – Rundenwahl per rechtem Knopf, Start per linkem Knopf."""
+    hub.display.orientation(Side.LEFT)
     hub.display.off()
     hub.light.on(Color.GREEN)
     print("READY")
