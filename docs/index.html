@@ -166,11 +166,32 @@
 <!-- WINNER OVERLAY -->
 <div class="overlay" id="ov-winner">
     <div class="ov-bg"></div>
-    <div class="ov-body">
-        <div class="win-trophy">🏆</div>
-        <div class="win-title">SIEGER</div>
-        <div class="win-badge" id="win-badge">SPUR 1</div>
-        <div class="win-hint" onclick="closeWinner()">Tippen um fortzufahren</div>
+    <div class="ov-body" style="width:90%; max-width:800px;">
+        <div class="win-title" style="margin-bottom:30px;">RENNEN BEENDET</div>
+        <div style="display:flex; gap:20px; justify-content:center; flex-wrap:wrap;">
+            
+            <!-- Karte Spur 1 -->
+            <div id="win-card-1" style="background:var(--bg-card); border:2px solid var(--s1); border-radius:16px; padding:20px; flex:1; min-width:250px; position:relative;">
+                <div id="win-trophy-1" style="position:absolute; top:-40px; right:-20px; font-size:64px; display:none; animation:tSpin 2s ease-in-out infinite;">🏆</div>
+                <div style="color:var(--s1); font-weight:900; font-size:24px; margin-bottom:5px;">SPUR 1 <span id="win-fahrer-1" style="color:var(--text); float:right;">TON</span></div>
+                <div style="font-size:36px; font-weight:900; color:#fff;" id="win-zeit-1">--:--.---</div>
+                <div id="win-pr-1" style="color:var(--gold); font-weight:700; margin-top:10px; display:none;">🌟 PERSÖNLICHER REKORD</div>
+                <div style="margin-top:15px; font-size:14px; color:var(--text-mid);">All-Time Platzierung (Top 100):</div>
+                <div id="win-rank-1" style="font-size:20px; font-weight:700; color:#fff;">#--</div>
+            </div>
+
+            <!-- Karte Spur 2 -->
+            <div id="win-card-2" style="background:var(--bg-card); border:2px solid var(--s2); border-radius:16px; padding:20px; flex:1; min-width:250px; position:relative;">
+                <div id="win-trophy-2" style="position:absolute; top:-40px; right:-20px; font-size:64px; display:none; animation:tSpin 2s ease-in-out infinite;">🏆</div>
+                <div style="color:var(--s2); font-weight:900; font-size:24px; margin-bottom:5px;">SPUR 2 <span id="win-fahrer-2" style="color:var(--text); float:right;">PLA</span></div>
+                <div style="font-size:36px; font-weight:900; color:#fff;" id="win-zeit-2">--:--.---</div>
+                <div id="win-pr-2" style="color:var(--gold); font-weight:700; margin-top:10px; display:none;">🌟 PERSÖNLICHER REKORD</div>
+                <div style="margin-top:15px; font-size:14px; color:var(--text-mid);">All-Time Platzierung (Top 100):</div>
+                <div id="win-rank-2" style="font-size:20px; font-weight:700; color:#fff;">#--</div>
+            </div>
+
+        </div>
+        <button onclick="closeWinner()" class="btn-primary" style="margin-top:40px;">SCHLIESSEN</button>
     </div>
 </div>
 
@@ -208,7 +229,15 @@
             <div class="spur-panel" id="panel-1">
                 <div class="stripe" style="background:var(--s1)"></div>
                 <div class="spur-body">
-                    <div class="spur-name" style="color:var(--s1)">SPUR 1</div>
+                    <div class="spur-name" style="color:var(--s1)">
+                        SPUR 1
+                        <select id="s1-fahrer" style="margin-left:12px;background:var(--bg-card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:2px 4px;font-weight:700;">
+                            <option value="TON" selected>TON</option>
+                            <option value="PLA">PLA</option>
+                            <option value="JCB">JCB</option>
+                            <option value="MAR">MAR</option>
+                        </select>
+                    </div>
                     <div class="runden-row"><span class="runden-lbl">RUNDE</span><span class="runden-val" id="s1-runde">0 / 10</span></div>
                     <div class="prog"><div class="prog-fill" id="s1-prog" style="background:var(--s1)"></div></div>
                     <div class="zeit-lbl">LETZTE RUNDE</div>
@@ -220,7 +249,15 @@
             <div class="spur-panel" id="panel-2">
                 <div class="stripe" style="background:var(--s2)"></div>
                 <div class="spur-body">
-                    <div class="spur-name" style="color:var(--s2)">SPUR 2</div>
+                    <div class="spur-name" style="color:var(--s2)">
+                        SPUR 2
+                        <select id="s2-fahrer" style="margin-left:12px;background:var(--bg-card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:2px 4px;font-weight:700;">
+                            <option value="PLA" selected>PLA</option>
+                            <option value="TON">TON</option>
+                            <option value="JCB">JCB</option>
+                            <option value="MAR">MAR</option>
+                        </select>
+                    </div>
                     <div class="runden-row"><span class="runden-lbl">RUNDE</span><span class="runden-val" id="s2-runde">0 / 10</span></div>
                     <div class="prog"><div class="prog-fill" id="s2-prog" style="background:var(--s2)"></div></div>
                     <div class="zeit-lbl">LETZTE RUNDE</div>
@@ -366,22 +403,88 @@ function updateSpur(idx) {
 }
 
 /* ════ Winner ═══════════════════════════════════════════ */
-function showWinner(sn) {
-    const badge=$('win-badge');
-    badge.textContent=`SPUR ${sn}`;
-    badge.style.background = sn===1?'rgba(255,50,50,.25)':'rgba(45,128,255,.25)';
+async function showWinner(sn) {
     $(`panel-${sn}`).classList.add('sieger');
     const fin=$(`s${sn}-fin`); fin.textContent='🏆 GEWONNEN!'; fin.classList.add('on','sieger-style');
-    startKonfetti(); $('ov-winner').classList.add('show');
+    startKonfetti(); 
+    $('ov-winner').classList.add('show');
     status(`🏆 Rennen beendet – Sieger: Spur ${sn}`);
-    // Bestzeiten in Firebase
+
+    // UI Reset
+    $('win-trophy-1').style.display = sn === 1 ? 'block' : 'none';
+    $('win-trophy-2').style.display = sn === 2 ? 'block' : 'none';
+    $('win-pr-1').style.display = 'none';
+    $('win-pr-2').style.display = 'none';
+    $('win-rank-1').textContent = 'Wird berechnet...';
+    $('win-rank-2').textContent = 'Wird berechnet...';
+
+    // Set Driver Names and Times
+    const f1 = $('s1-fahrer').value;
+    const f2 = $('s2-fahrer').value;
+    $('win-fahrer-1').textContent = f1;
+    $('win-fahrer-2').textContent = f2;
+    
+    const ms1 = sessionBeste[0];
+    const ms2 = sessionBeste[1];
+    $('win-zeit-1').textContent = ms1 ? fmtMs(ms1) : '--:--.---';
+    $('win-zeit-2').textContent = ms2 ? fmtMs(ms2) : '--:--.---';
+
     if (FB_AKTIV && db) {
-        sessionBeste.forEach((ms,idx)=>{
-            if (ms===null) return;
-            db.collection('laptimes').add({spur:idx+1, zeit_ms:ms, datum:firebase.firestore.FieldValue.serverTimestamp()})
-              .catch(e=>console.warn('Firebase write:',e));
-        });
+        for (let i = 0; i < 2; i++) {
+            const ms = sessionBeste[i];
+            if (!ms) {
+                $(`win-rank-${i+1}`).textContent = '-';
+                continue;
+            }
+            
+            const spurNum = i + 1;
+            const fahrer = i === 0 ? f1 : f2;
+
+            try {
+                const snap = await db.collection('laptimes')
+                                    .where('spur', '==', spurNum)
+                                    .orderBy('zeit_ms', 'asc')
+                                    .limit(100)
+                                    .get();
+                
+                let isPR = true;
+                let rank = 1;
+                let inserted = false;
+
+                snap.docs.forEach(doc => {
+                    const data = doc.data();
+                    if (!inserted && ms < data.zeit_ms) {
+                        inserted = true;
+                    } else if (!inserted) {
+                        rank++;
+                    }
+                    if (data.fahrer === fahrer && data.zeit_ms <= ms) {
+                        isPR = false; 
+                    }
+                });
+
+                if (isPR) {
+                    $(`win-pr-${spurNum}`).style.display = 'block';
+                }
+                $(`win-rank-${spurNum}`).textContent = rank <= 100 ? `#${rank}` : '> 100';
+
+                await db.collection('laptimes').add({
+                    spur: spurNum, 
+                    zeit_ms: ms, 
+                    fahrer: fahrer,
+                    datum: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+            } catch(e) {
+                console.warn('Firebase query/write error:', e);
+                $(`win-rank-${spurNum}`).textContent = 'Fehler';
+            }
+        }
+    } else {
+        $('win-rank-1').textContent = 'Offline';
+        $('win-rank-2').textContent = 'Offline';
     }
+    
     loadLb();
 }
 
@@ -389,14 +492,14 @@ function showWinner(sn) {
 function handleMsg(msg) {
     console.log('[BLE]', msg);
     const p=msg.split(':'), cmd=p[0];
-    if (cmd==='READY') { resetRace(); status('Hub bereit – drücke die linke Taste am Brick'); }
+    if (cmd==='READY') { closeWinner(); resetRace(); status('Hub bereit – drücke die linke Taste am Brick'); }
     else if (cmd==='RUNDEN' && p[1]) {
         race.maxRunden=parseInt(p[1]);
         $('max-runden-lbl').textContent=p[1];
         for(let s=1;s<=2;s++) $(`s${s}-runde`).textContent=`${race.spuren[s-1].runde} / ${p[1]}`;
         status(`${p[1]} Runden – Ampelsequenz startet gleich…`);
     }
-    else if (cmd==='AMPEL' && p[1]) { showAmpel(parseInt(p[1])); status('🔴 Ampelsequenz…'); }
+    else if (cmd==='AMPEL' && p[1]) { closeWinner(); showAmpel(parseInt(p[1])); status('🔴 Ampelsequenz…'); }
     else if (cmd==='GO') { ampelAus(); status('🏁 Rennen läuft!'); }
     else if (cmd==='FALSE_START' && p[1]) {
         const sn=parseInt(p[1]); ampelAus();
@@ -543,7 +646,8 @@ async function loadLb() {
             row.className='lb-row';
             const col=d.spur===1?'var(--s1)':'var(--s2)';
             const datum=d.datum?d.datum.toDate().toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'2-digit'}):'–';
-            row.innerHTML=`<div class="lb-rank ${RC[i]||''}">${RANKS[i]||(i+1)}</div><div class="lb-spur"><div class="lb-dot" style="background:${col}"></div>Spur ${d.spur}</div><div class="lb-zeit">${fmtMs(d.zeit_ms)}</div><div class="lb-datum">${datum}</div>`;
+            const fn=d.fahrer?d.fahrer:'???';
+            row.innerHTML=`<div class="lb-rank ${RC[i]||''}">${RANKS[i]||(i+1)}</div><div class="lb-spur"><div class="lb-dot" style="background:${col}"></div>Spur ${d.spur} <span style="color:var(--text-mid);font-size:12px">(${fn})</span></div><div class="lb-zeit">${fmtMs(d.zeit_ms)}</div><div class="lb-datum">${datum}</div>`;
             card.appendChild(row);
         });
     } catch(e) { console.error(e); empty.textContent='❌ '+e.message; empty.style.display='block'; }
