@@ -229,9 +229,9 @@
             <div class="spur-panel" id="panel-1">
                 <div class="stripe" style="background:var(--s1)"></div>
                 <div class="spur-body">
-                    <div class="spur-name" style="color:var(--s1)">
+                    <div class="spur-name" style="color:var(--s1); display:flex; align-items:center; justify-content:space-between;">
                         SPUR 1
-                        <select id="s1-fahrer" style="margin-left:12px;background:var(--bg-card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:2px 4px;font-weight:700;">
+                        <select id="s1-fahrer" style="font-size:18px;background:rgba(0,0,0,0.5);border:2px solid var(--s1);color:#fff;border-radius:8px;padding:4px 8px;font-weight:900;outline:none;">
                             <option value="TON" selected>TON</option>
                             <option value="PLA">PLA</option>
                             <option value="JCB">JCB</option>
@@ -249,9 +249,9 @@
             <div class="spur-panel" id="panel-2">
                 <div class="stripe" style="background:var(--s2)"></div>
                 <div class="spur-body">
-                    <div class="spur-name" style="color:var(--s2)">
+                    <div class="spur-name" style="color:var(--s2); display:flex; align-items:center; justify-content:space-between;">
                         SPUR 2
-                        <select id="s2-fahrer" style="margin-left:12px;background:var(--bg-card);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:2px 4px;font-weight:700;">
+                        <select id="s2-fahrer" style="font-size:18px;background:rgba(0,0,0,0.5);border:2px solid var(--s2);color:#fff;border-radius:8px;padding:4px 8px;font-weight:900;outline:none;">
                             <option value="PLA" selected>PLA</option>
                             <option value="TON">TON</option>
                             <option value="JCB">JCB</option>
@@ -441,10 +441,10 @@ async function showWinner(sn) {
             const fahrer = i === 0 ? f1 : f2;
 
             try {
+                // Lokaler Filter, um das Erstellen eines Firebase Composite Index zu umgehen
                 const snap = await db.collection('laptimes')
-                                    .where('spur', '==', spurNum)
                                     .orderBy('zeit_ms', 'asc')
-                                    .limit(100)
+                                    .limit(200)
                                     .get();
                 
                 let isPR = true;
@@ -453,6 +453,8 @@ async function showWinner(sn) {
 
                 snap.docs.forEach(doc => {
                     const data = doc.data();
+                    if (data.spur !== spurNum) return; // JS Filter statt DB Filter
+                    
                     if (!inserted && ms < data.zeit_ms) {
                         inserted = true;
                     } else if (!inserted) {
@@ -634,22 +636,29 @@ async function loadLb() {
     const empty=$('lb-empty'), card=$('lb-card');
     if (!FB_AKTIV||!db) { empty.textContent='⚙️ Firebase nicht konfiguriert – siehe Quellcode'; empty.style.display='block'; return; }
     try {
-        let q=db.collection('laptimes').orderBy('zeit_ms','asc').limit(25);
-        if (lbFilter!=='all') q=q.where('spur','==',parseInt(lbFilter));
-        const snap=await q.get();
+        // Lade Top 100 global, um Composite Indexes zu vermeiden, und filtere lokal
+        const snap=await db.collection('laptimes').orderBy('zeit_ms','asc').limit(150).get();
         card.querySelectorAll('.lb-row:not(.hdr)').forEach(r=>r.remove());
-        if (snap.empty) { empty.style.display='block'; return; }
-        empty.style.display='none';
+        
+        let count = 0;
         const RANKS=['🥇','🥈','🥉'], RC=['g','s','b'];
-        snap.docs.forEach((doc,i)=>{
-            const d=doc.data(), row=document.createElement('div');
+        
+        snap.docs.forEach((doc) => {
+            if (count >= 25) return;
+            const d=doc.data();
+            
+            if (lbFilter !== 'all' && d.spur !== parseInt(lbFilter)) return; // Lokaler Filter
+            
+            const row=document.createElement('div');
             row.className='lb-row';
             const col=d.spur===1?'var(--s1)':'var(--s2)';
             const datum=d.datum?d.datum.toDate().toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'2-digit'}):'–';
             const fn=d.fahrer?d.fahrer:'???';
-            row.innerHTML=`<div class="lb-rank ${RC[i]||''}">${RANKS[i]||(i+1)}</div><div class="lb-spur"><div class="lb-dot" style="background:${col}"></div>Spur ${d.spur} <span style="color:var(--text-mid);font-size:12px">(${fn})</span></div><div class="lb-zeit">${fmtMs(d.zeit_ms)}</div><div class="lb-datum">${datum}</div>`;
+            row.innerHTML=`<div class="lb-rank ${RC[count]||''}">${RANKS[count]||(count+1)}</div><div class="lb-spur"><div class="lb-dot" style="background:${col}"></div>Spur ${d.spur} <span style="color:var(--text-mid);font-size:12px">(${fn})</span></div><div class="lb-zeit">${fmtMs(d.zeit_ms)}</div><div class="lb-datum">${datum}</div>`;
             card.appendChild(row);
+            count++;
         });
+        if (count === 0) { empty.style.display='block'; } else { empty.style.display='none'; }
     } catch(e) { console.error(e); empty.textContent='❌ '+e.message; empty.style.display='block'; }
 }
 
