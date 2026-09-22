@@ -25,7 +25,7 @@ from urandom import randint
 # --- Hardware ---
 hub = PrimeHub()
 sensor_spur1 = ColorSensor(Port.A)
-sensor_spur2 = ColorSensor(Port.B)
+sensor_spur2 = ColorSensor(Port.E)
 
 # --- Konfiguration ---
 SCHWELLWERT = 30          # reflection() > SCHWELLWERT → Auto erkannt

@@ -179,6 +179,7 @@
     <div class="header">
         <div class="logo">🏎️ CARRERA</div>
         <div class="header-right">
+            <button onclick="toggleFullscreen()" style="background:var(--bg-card);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:8px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;margin-right:12px" title="Vollbild">⛶</button>
             <div class="badge">
                 <span class="badge-label">RUNDEN</span>
                 <span class="badge-value" id="max-runden-lbl">10</span>
@@ -558,7 +559,25 @@ function startKonfetti() {
         c.appendChild(p);
     }
 }
+}
 function stopKonfetti() { $('konfetti').innerHTML=''; }
+
+/* ════ Fullscreen ═══════════════════════════════════════ */
+function toggleFullscreen() {
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        if (document.documentElement.requestFullscreen) {
+            document.documentElement.requestFullscreen();
+        } else if (document.documentElement.webkitRequestFullscreen) { // Safari/Bluefy
+            document.documentElement.webkitRequestFullscreen();
+        }
+    } else {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+        }
+    }
+}
 </script>
 </body>
 </html>
