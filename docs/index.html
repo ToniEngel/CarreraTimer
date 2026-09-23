@@ -528,6 +528,7 @@ function handleMsg(msg) {
 
 /* ════ BLE ══════════════════════════════════════════════ */
 async function bleConnect(alleGeraete=false) {
+    if(typeof requestWakeLock === 'function') requestWakeLock();
     if (!navigator.bluetooth) {
         $('conn-status').textContent='❌ Web Bluetooth n/v – bitte Bluefy nutzen'; return;
     }
@@ -689,6 +690,20 @@ function toggleFullscreen() {
         }
     }
 }
+/* ════ Wake Lock (Standby verhindern) ═══════════════════ */
+let wakeLock = null;
+async function requestWakeLock() {
+    try {
+        if ('wakeLock' in navigator) {
+            wakeLock = await navigator.wakeLock.request('screen');
+            wakeLock.addEventListener('release', () => console.log('Wake Lock released'));
+            console.log('Wake Lock acquired');
+        }
+    } catch (err) { console.warn('Wake Lock error:', err.message); }
+}
+document.addEventListener('visibilitychange', async () => {
+    if (wakeLock !== null && document.visibilityState === 'visible') { requestWakeLock(); }
+});
 </script>
 </body>
 </html>
