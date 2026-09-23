@@ -260,34 +260,33 @@ def rennen(max_runden):
             if fertig[spur]:
                 continue
 
-            # Entprellzeit pruefen
-            if jetzt - letzte_erk[spur] < ENTPRELLZEIT_MS:
-                continue
-
             if sensor_erkennt_auto(sensoren[spur]):
+                # Ist die Sperrzeit abgelaufen, seit das Auto ZULETZT den Sensor verlassen hat?
+                if jetzt - letzte_erk[spur] > ENTPRELLZEIT_MS:
+                    # Erkennung: Runde abgeschlossen
+                    runden[spur] += 1
+                    rundenzeit = jetzt - runden_start[spur]
+                    runden_start[spur] = jetzt
+    
+                    spur_nr = spur + 1  # 1-basiert fuer Protokoll
+                    print("LAP:" + str(spur_nr) + ":" + str(runden[spur]) + ":" + str(rundenzeit))
+    
+                    # Rundenfortschritt auf Matrix aktualisieren
+                    rest1 = max_runden - runden[0]
+                    rest2 = max_runden - runden[1]
+                    zeige_rundenfortschritt(
+                        max(rest1, 0),
+                        max(rest2, 0)
+                    )
+    
+                    # Letzte Runde?
+                    if runden[spur] >= max_runden:
+                        fertig[spur] = True
+                        gesamt_zeit[spur] = jetzt
+                        print("FINISH:" + str(spur_nr) + ":" + str(jetzt))
+                        
+                # Timer kontinuierlich zuruecksetzen solange das Auto noch auf dem Sensor steht!
                 letzte_erk[spur] = jetzt
-
-                # Erkennung: Runde abgeschlossen
-                runden[spur] += 1
-                rundenzeit = jetzt - runden_start[spur]
-                runden_start[spur] = jetzt
-
-                spur_nr = spur + 1  # 1-basiert fuer Protokoll
-                print("LAP:" + str(spur_nr) + ":" + str(runden[spur]) + ":" + str(rundenzeit))
-
-                # Rundenfortschritt auf Matrix aktualisieren
-                rest1 = max_runden - runden[0]
-                rest2 = max_runden - runden[1]
-                zeige_rundenfortschritt(
-                    max(rest1, 0),
-                    max(rest2, 0)
-                )
-
-                # Letzte Runde?
-                if runden[spur] >= max_runden:
-                    fertig[spur] = True
-                    gesamt_zeit[spur] = jetzt
-                    print("FINISH:" + str(spur_nr) + ":" + str(jetzt))
 
         # Kein wait() – so schnell wie moeglich pollen
 
